@@ -14,6 +14,8 @@ from app.main import app  # noqa: E402
 @pytest.fixture(scope="session")
 def client():
     with TestClient(app) as test_client:
+        token = test_client.post("/api/auth/login", json={"username": "admin", "password": "admin"}).json()["token"]
+        test_client.headers["Authorization"] = f"Bearer {token}"
         yield test_client
 
 
