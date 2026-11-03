@@ -1,4 +1,5 @@
 import { config } from "../api.js";
+import { logo } from "./brand.js";
 import { h } from "./dom.js";
 import { openModal } from "./modal.js";
 import { table } from "./table.js";
@@ -18,7 +19,7 @@ export function documentView({ title, facility, meta = [], sections = [] }) {
   return h(
     "article",
     { class: "doc" },
-    h("header", {}, h("h2", {}, facility), h("h3", {}, title)),
+    h("header", {}, logo(56), h("h2", {}, facility), h("h3", {}, title)),
     h("dl", { class: "doc-meta" }, meta.filter(([, value]) => value != null && value !== "").map(([key, value]) => [h("dt", {}, key), h("dd", {}, value)])),
     sections.map(renderSection)
   );
