@@ -14,6 +14,11 @@ const text = (field, value) => {
   return { node, read: () => node.value };
 };
 
+const password = (field, value) => {
+  const node = h("input", { type: "password", value: value ?? "", required: field.required, autocomplete: "new-password", placeholder: field.placeholder });
+  return { node, read: () => node.value };
+};
+
 const textarea = (field, value) => {
   const node = h("textarea", { rows: 3, value: value ?? "" });
   return { node, read: () => node.value };
@@ -64,6 +69,7 @@ const patient = (field, value, values) => {
 
 const INPUTS = {
   text,
+  password,
   textarea,
   checkbox,
   select,

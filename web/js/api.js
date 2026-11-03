@@ -1,4 +1,8 @@
+import { clear, token } from "./session.js";
 import { toast } from "./ui/toast.js";
+
+let expired = () => {};
+export const onExpired = (fn) => (expired = fn);
 
 const describe = (detail) =>
   Array.isArray(detail) ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ") : detail || "Request failed";
@@ -10,9 +14,16 @@ async function request(method, path, { params, body } = {}) {
   }
   const response = await fetch(url, {
     method,
-    headers: body === undefined ? {} : { "Content-Type": "application/json" },
+    headers: {
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (response.status === 401 && token()) {
+    clear();
+    expired();
+  }
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     const message = describe(error.detail);
