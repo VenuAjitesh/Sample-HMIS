@@ -15,6 +15,10 @@ uvicorn app.main:app --reload
 
 Open http://localhost:8000 (API docs at `/docs`). SQLite `hmis.db` is created and seeded on first start. Set `DATABASE_URL` to use another database and `FACILITY_NAME` to rebrand print-outs.
 
+## Login and roles
+
+Sign in with the default user `admin` / `admin` (change it from the sidebar, and create users under Users & roles). Roles: admin, doctor, nurse, reception, lab, pharmacist, billing. Access per area is defined in one table in `app/modules/auth/access.py`; the sidebar only shows what a role can open. The logo lives at `web/img/logo.svg`.
+
 ## Docker
 
 ```
@@ -40,6 +44,6 @@ Adding an entity: define a model, register `make_crud_router(Model, "/api/...")`
 
 ## Not included
 
-Authentication/roles, audit trail, multi-facility, ABDM/NHCX integration.
+Audit trail, multi-facility, ABDM/NHCX integration.
 
 MIT licensed.
