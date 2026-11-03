@@ -1,0 +1,13 @@
+services:
+  hmis:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      FACILITY_NAME: Ajitesh Hospital
+    volumes:
+      - hmis-data:/data
+    restart: unless-stopped
+
+volumes:
+  hmis-data:
