@@ -34,6 +34,7 @@ Aadhaar and stay read-only on every form filled from an ABHA. `PATCH /abha/api/v
 | `BENEFIT_NAME` | None approved by NHA. The header is omitted on `enrol/byAadhaar` |
 | Link an ABHA later | Yes. A patient registered without an ABHA can run the same ABHA step later from a **Link ABHA** row action on the patient list, which links to the existing MRN instead of creating one |
 | Profile photo | Shown on the profile and confirmation screens: VRFY_ABHA_101, 201 and 305 list the photo among the fetched details. Stored with the patient (`abha_photo`), because VRFY_ABHA_101 and 201 expect the retrieved data to be saved in the HMIS. Mandatory, so it was decided without asking |
+| Automated tests | **Skipped in demo runs** (decided 2026-11-06). Do not write or extend `tests/test_abdm.py` while building M1; the existing `pytest` suite still has to pass. A journey is verified by running it once against the sandbox (or the browser, when no credentials are set) |
 
 ### Out of scope
 
@@ -45,6 +46,7 @@ Aadhaar and stay read-only on every form filled from an ABHA. `PATCH /abha/api/v
 | Biometric, face, driving-licence routes; read ABHA QR | Optional. The interview added none |
 | Child ABHA create/update | Not requested |
 | NHA functional test run (`/abdm-test`, workbook, `abdm-ft/`) | **Not run in this demo** (CLAUDE.local.md). Case IDs are listed in §8 |
+| New automated tests for M1 | **Skipped in demo runs** (decision above). Saves time; the trade-off is that regressions surface only in the sandbox or browser walk |
 
 ## 2. Prerequisites
 
