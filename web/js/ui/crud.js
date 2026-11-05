@@ -24,6 +24,7 @@ export function crudPanel({
   canDelete = true,
   refreshesOptions = false,
   onChange,
+  onNew,
 }) {
   const body = h("div");
   const filterInputs = filters.map((f) => ({ f, ...makeInput(f, f.default, () => load()) }));
@@ -42,9 +43,9 @@ export function crudPanel({
     onChange?.();
   }
 
-  function openForm(row) {
+  function openForm(row, prefill = {}) {
     openModal(`${row ? "Edit" : "New"} ${noun}`, (close) =>
-      buildForm(fields, row || defaults, {
+      buildForm(fields, row || { ...defaults, ...prefill }, {
         onCancel: close,
         onSubmit: async (data) => {
           await (row ? api.put(`${path}/${row.id}`, data) : api.post(path, { ...fixed, ...data }));
@@ -55,6 +56,9 @@ export function crudPanel({
       })
     );
   }
+
+  // Opens the "New" form with values filled in, e.g. from a verified ABHA profile.
+  const openNew = (prefill) => openForm(null, prefill);
 
   const actions = [
     ...rowActions.map((a) => ({ ...a, onClick: (row) => a.onClick(row, changed) })),
@@ -83,13 +87,14 @@ export function crudPanel({
         { class: "toolbar" },
         searchable && searchBox,
         toolbar.map((t) => h("button", { class: "btn", onClick: () => t.onClick(changed, currentFilters) }, t.label)),
-        canCreate && fields.length > 0 && h("button", { class: "btn primary", onClick: () => openForm(null) }, `New ${noun}`)
+        canCreate && fields.length > 0 && h("button", { class: "btn primary", onClick: () => (onNew ? onNew(openNew) : openNew()) }, `New ${noun}`)
       )
     ),
     filterInputs.length > 0 && h("div", { class: "filters" }, filterInputs.map(({ f, ...input }) => fieldRow(f, input))),
     body
   );
   root.reload = load;
+  root.openNew = openNew;
   load();
   return root;
 }
