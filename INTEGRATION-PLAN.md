@@ -26,6 +26,15 @@ fingerprint or iris reader · no face/ABHA-app route · no driving-licence route
 Aadhaar and stay read-only on every form filled from an ABHA. `PATCH /abha/api/v3/profile/account` is published only for child ABHAs
 (`m1_patch_v3_profile_account_child_*`), which are out of scope. Email can be verified once, during creation (optional calls 5–6 of create).
 
+**Decisions (2026-11-06, second planning pass):**
+
+| Question | Answer |
+|---|---|
+| Sandbox credentials | Not set in this checkout yet. The variable names stay in `.env.example` and `app/core/config.py`, and the person fills `.env` later. Until then every ABDM call returns 503 "ABDM is not configured" and the build is verified with mocked ABDM responses |
+| `BENEFIT_NAME` | None approved by NHA. The header is omitted on `enrol/byAadhaar` |
+| Link an ABHA later | Yes. A patient registered without an ABHA can run the same ABHA step later from a **Link ABHA** row action on the patient list, which links to the existing MRN instead of creating one |
+| Profile photo | Shown on the profile and confirmation screens: VRFY_ABHA_101, 201 and 305 list the photo among the fetched details. Stored with the patient (`abha_photo`), because VRFY_ABHA_101 and 201 expect the retrieved data to be saved in the HMIS. Mandatory, so it was decided without asking |
+
 ### Out of scope
 
 | Item | Why |
@@ -41,11 +50,11 @@ Aadhaar and stay read-only on every form filled from an ABHA. `PATCH /abha/api/v
 
 | # | Prerequisite | State |
 |---|---|---|
-| P1 | Sandbox client id and secret from ABDM sandbox registration, in `.env` as `ABDM_CLIENT_ID` / `ABDM_CLIENT_SECRET` | Done 2026-11-06 (`.env`, git-ignored) |
+| P1 | Sandbox client id and secret from ABDM sandbox registration, in `.env` as `ABDM_CLIENT_ID` / `ABDM_CLIENT_SECRET` | Pending. Names in `.env.example` and `config.py`; the person sets the values in `.env` (git-ignored) later. An earlier checkout had them, which is where the step 1 evidence comes from |
 | P2 | Outbound HTTPS from the backend to `dev.abdm.gov.in` and `abhasbx.abdm.gov.in` | To confirm at step 1 |
 | P3 | Machine clock in sync. `TIMESTAMP` must be UTC ISO-8601 with milliseconds and a trailing `Z` | To confirm at step 1 |
 | P4 | Test people for the sandbox runs: an Aadhaar holder with an ABHA, an Aadhaar without one, a mobile with several ABHAs, a mobile with none, and a second mobile for the update. They must be present to read OTPs | Person to arrange |
-| P5 | `BENEFIT_NAME` header value, if NHA approved one for this integrator (`enrol/byAadhaar`) | Ask NHA. Omit it if none was approved |
+| P5 | `BENEFIT_NAME` header value, if NHA approved one for this integrator (`enrol/byAadhaar`) | None approved (answered 2026-11-06). Header omitted |
 | P6 | `httpx` and `cryptography` | Already in `requirements.txt` |
 | P7 | Public callback URL | Not needed for this plan's scope. Needed only for deferred scan-and-share |
 
@@ -79,8 +88,8 @@ Aadhaar and stay read-only on every form filled from an ABHA. `PATCH /abha/api/v
 | Runtime / run / test | Python, FastAPI + SQLModel. `uvicorn app.main:app`, `pytest` | Tests for the client and guards in `tests/test_abdm.py` (new) |
 | Front/back split | `web/` vanilla ES modules call `/api/*` through `web/js/api.js` | Every ABDM call goes through the backend. The browser never sees a gateway token or X-token |
 | Outbound HTTP client | None in `app/` (`httpx` only in requirements) | New, at `app/modules/abdm/client.py` |
-| Config / secrets | `app/core/config.py` reads `.env` (already has `ABDM_*`) | Reuse. Add `ABDM_BENEFIT_NAME` (optional) |
-| Patient model | `app/modules/patients/models.py` `Patient` (mrn, name, gender, dob, phone, address) | Add nullable columns: `abha_number` (indexed), `abha_address`, `abha_kyc_verified`, `email`, `state`, `district`. `init_db()` adds them on start |
+| Config / secrets | `app/core/config.py` reads `.env` (already has `ABDM_*`) | Reuse. No `BENEFIT_NAME` setting: none approved |
+| Patient model | `app/modules/patients/models.py` `Patient` (mrn, name, gender, dob, phone, address) | Add nullable columns: `abha_number` (indexed), `abha_address`, `abha_kyc_verified`, `abha_photo`, `email`, `state`, `district`. `init_db()` adds them on start |
 | Consent record | none | New table `AbhaConsent` (patient/flow, code `abha-enrollment`, version `1.4`, worker user, beneficiary name, timestamp) in `app/modules/abdm/models.py` |
 | Inbound routing / auth | `app/core/registry.py` ROUTERS, `app/modules/auth/access.py` POLICY + `guard` | Register `app/modules/abdm/router.py` at `/api/abdm`. Add `"/api/abdm": (FRONT, FRONT)` to POLICY |
 | Public URL | none (localhost) | Callback journeys deferred |
@@ -116,7 +125,8 @@ New patient ─► ABHA step ─┬─ Create ABHA (Aadhaar OTP) ─────
 | ABHA address | at least 3 suggestions + custom field with live green/red rules (8–18 chars incl. `@sbx`, ≤1 dot, ≤1 underscore, not first/last). "ABHA address already exists." → use existing or create new | profile fields | CRT_ABHA_112 |
 | Account chooser (mobile) | which of several ABHAs (masked number, address, name). OTP only after the pick | anything the list carries | VRFY_ABHA_302–305 |
 | Not found | ABDM-1114 → fixed text + "Create ABHA" (carries the Aadhaar over without re-asking) | n/a | VRFY_ABHA_303, 403 |
-| ABHA profile + card | 14-digit number, address, profile. Card view/download, or "card unavailable for non-KYC" | n/a | CRT_ABHA_113, 114, VRFY_ABHA_404 |
+| Link ABHA later | the same ABHA step, started from the **Link ABHA** row action on a patient without one. Ends by linking to that MRN; an ABHA already linked to another patient shows the comparison screen | anything the record already holds | TAGGING_…, VRFY_ABHA_308 |
+| ABHA profile + card | 14-digit number, address, profile with photo (photo stored as `abha_photo`). Card view/download, or "card unavailable for non-KYC" | n/a | CRT_ABHA_113, 114, VRFY_ABHA_404 |
 | Mobile update offer | Yes/No when the record's mobile ≠ the ABHA mobile → update-mobile OTP | n/a | VRFY_ABHA_101/201 step 5, PROF_ABHA_601 |
 | Already linked | "This ABHA profile is already linked to HMIS Beneficiary ID." + side-by-side ABHA vs. record | n/a | VRFY_ABHA_308, TAGGING_… |
 | Confirm form | corrections only. name/dob/gender read-only. address/email/mobile/state/district editable | anything the profile carries | VRFY_ABHA_306 and every route |
@@ -131,7 +141,7 @@ Bodies follow the operation named. Encrypted fields are marked 🔒.
 
 **J1. Create ABHA by Aadhaar OTP** (`m1-create-abha-aadhaar-otp`, then `m1-abha-card-profile`)
 1. `POST /abha/api/v3/enrollment/request/otp`: `scope:["abha-enrol"]`, `loginHint:"aadhaar"`, `loginId`🔒, `otpSystem:"aadhaar"` → `txnId` + masked mobile in `message`
-2. `POST /abha/api/v3/enrollment/enrol/byAadhaar` (+`BENEFIT_NAME` if approved): `authData.authMethods:["otp"]`, `otp:{txnId, otpValue🔒, mobile}`, `consent:{code:"abha-enrollment", version:"1.4"}` → `isNew`, `tokens`, `ABHAProfile`
+2. `POST /abha/api/v3/enrollment/enrol/byAadhaar` (no `BENEFIT_NAME`: none approved): `authData.authMethods:["otp"]`, `otp:{txnId, otpValue🔒, mobile}`, `consent:{code:"abha-enrollment", version:"1.4"}` → `isNew`, `tokens`, `ABHAProfile`
 3. If the communication mobile differs: `POST …/enrollment/request/otp` (`scope:["abha-enrol","mobile-verify"]`, `loginHint:"mobile"`, `otpSystem:"abdm"`) → `POST …/enrollment/auth/byAbdm`
 4. `GET …/enrollment/enrol/suggestion` (header `TRANSACTION_ID: txnId`) → `POST …/enrollment/enrol/abha-address` `{txnId, abhaAddress, preferred:1}` → `healthIdNumber`, `preferredAbhaAddress`
 5. `GET /abha/api/v3/profile/account` + `GET …/profile/account/abha-card` (+`X-token`)
@@ -178,7 +188,7 @@ The only callback-driven (asynchronous) M1 journey is scan-and-share, which is d
 
 | # | Step | Exit condition | Status | Evidence | Date |
 |---|---|---|---|---|---|
-| 1 | Sandbox credentials in `.env`. Gateway session call from the backend | `sessions` returns 2xx with `accessToken`. A following M1 call is not 401 | **done** | Session 200 (request-id `c0651361-…`). The certificate call then returned 200 with that token | 2026-11-06 |
+| 1 | Sandbox credentials in `.env`. Gateway session call from the backend | `sessions` returns 2xx with `accessToken`. A following M1 call is not 401 | **done** (earlier checkout) | Session 200 (request-id `c0651361-…`). The certificate call then returned 200 with that token. Re-run once the person sets the `.env` values in this checkout | 2026-11-06 |
 | 2 | Certificate fetch + RSA encryption helper (padding read from `encryptionAlgorithm`, TTL cache) | An encrypted value is accepted: an OTP request returns `txnId`, not a validation refusal | in progress | Certificate 200: `RSA/ECB/OAEPWithSHA-1AndMGF1Padding`, 4096-bit. OAEP-SHA1 round trip proven in `tests/test_abdm.py`. ABDM accepting an encrypted value is still to be observed: it needs a real mobile or Aadhaar | 2026-11-06 |
 | 3 | `app/modules/abdm/` scaffold: client, router at `/api/abdm/m1`, POLICY entry, server-side flow/token store | `pytest tests/test_abdm.py` passes. `guard` admits reception at `/api/abdm` | **done** | `client.py`, `crypto.py`, `flows.py`, `router.py`. `pytest`: 29 passed (15 M1) | 2026-11-06 |
 | 4 | Patient columns + `AbhaConsent` table. `form.js` `readOnly` | Columns present after restart. Registration without ABHA still passes | **done** | `init_db` added the columns on start. `test_registration_without_abha_still_works` and `test_flow.py` pass | 2026-11-06 |
@@ -188,7 +198,7 @@ The only callback-driven (asynchronous) M1 journey is scan-and-share, which is d
 | 8 | J3 Verify by ABHA address (methods from search) | Methods shown = `authMethods`. Profile fills the form | **blocked** (built) | Search is reachable through the app (sandbox answered an unknown address, see §10) | 2026-11-06 |
 | 9 | J4 Find ABHA by mobile | A list appears before any OTP. The chosen ABHA opens. A no-ABHA mobile shows the not-found screen | **blocked** (built) | Mocked: list before OTP, `index` + search `txnId`, T-token exchange | |
 | 10 | J5 Verify by Aadhaar OTP | 200 path fills the form. `ABDM-1114` offers create with the Aadhaar carried over | **blocked** (built) | Mocked: carry-over sends the same encrypted Aadhaar with no re-entry | |
-| 11 | J7 One ABHA per patient + returning-patient match + comparison screen | The same ABHA twice leaves one patient row. The second time shows the comparison | **done** (no ABDM call) | `test_one_abha_per_patient` (409 names the MRN), `test_returning_patient_match` | 2026-11-06 |
+| 11 | J7 One ABHA per patient + returning-patient match + comparison screen + **Link ABHA** row action for patients registered without one | The same ABHA twice leaves one patient row. The second time shows the comparison | **done** (no ABDM call) | `test_one_abha_per_patient` (409 names the MRN), `test_returning_patient_match` | 2026-11-06 |
 | 12 | J6 Update mobile | Verify returns success. The re-read profile shows the new masked mobile | **blocked** (built) | Needs an ABHA holder + a second mobile | |
 | 13 | End-to-end walk on the registration page | Each journey completed once against the sandbox, with REQUEST-IDs noted here | pending | | |
 | 14 | Functional test cases (§8) | **Not run in this demo** (CLAUDE.local.md) | n/a | | |
