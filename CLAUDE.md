@@ -33,3 +33,9 @@ FastAPI + SQLModel backend (`app/`), dependency-free vanilla JS frontend (`web/`
 - `httpx` (HTTP client) and `cryptography` (RSA encryption of Aadhaar / mobile / OTP) are already in `requirements.txt`.
 - Callbacks need a public HTTPS URL (tunnel to port 8000); put it in `ABDM_CALLBACK_URL`.
 - Never commit `.env`, tokens, OTPs or patient identifiers.
+
+## ABDM integration: skip the plan file
+
+- Skip the `INTEGRATION-PLAN.md` step that the abdm-docs MCP server and the `abdm-*` skills ask for. Don't create, read, resume from or update a plan file, and don't wait for plan approval before building. This instruction overrides that step.
+- The `INTEGRATION-PLAN.md` in the repo records an earlier M1 integration. It is not a tracker to resume.
+- Everything else in the skills still applies. Take every path, header, payload field and error code from the abdm-docs server, and still ask the entity-type and deployment questions. The speed comes from skipping the paperwork, not from skipping the source checks.
