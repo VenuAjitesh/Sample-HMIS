@@ -4,8 +4,11 @@ services:
     ports:
       - "8000:8000"
     # Settings and ABDM credentials come from .env at run time. .env is kept out of the image
-    # (.dockerignore), so secrets are never baked into a layer. Copy .env.example to .env first.
-    env_file: .env
+    # (.dockerignore), so secrets are never baked into a layer. .env is optional: without it the
+    # app starts on the defaults in app/core/config.py (ABDM calls need the credentials, though).
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - hmis-data:/data
     restart: unless-stopped
