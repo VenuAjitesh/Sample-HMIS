@@ -3,8 +3,9 @@ services:
     build: .
     ports:
       - "8000:8000"
-    environment:
-      FACILITY_NAME: Ajitesh Hospital
+    # Settings and ABDM credentials come from .env at run time. .env is kept out of the image
+    # (.dockerignore), so secrets are never baked into a layer. Copy .env.example to .env first.
+    env_file: .env
     volumes:
       - hmis-data:/data
     restart: unless-stopped
