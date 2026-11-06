@@ -34,7 +34,8 @@ Aadhaar and stay read-only on every form filled from an ABHA. `PATCH /abha/api/v
 | `BENEFIT_NAME` | None approved by NHA. The header is omitted on `enrol/byAadhaar` |
 | Link an ABHA later | Yes. A patient registered without an ABHA can run the same ABHA step later from a **Link ABHA** row action on the patient list, which links to the existing MRN instead of creating one |
 | Profile photo | Shown on the profile and confirmation screens: VRFY_ABHA_101, 201 and 305 list the photo among the fetched details. Stored with the patient (`abha_photo`), because VRFY_ABHA_101 and 201 expect the retrieved data to be saved in the HMIS. Mandatory, so it was decided without asking |
-| Automated tests | **Skipped in demo runs** (decided 2026-11-06). Do not write or extend `tests/test_abdm.py` while building M1; the existing `pytest` suite still has to pass. A journey is verified by running it once against the sandbox (or the browser, when no credentials are set) |
+| Automated tests | **Skipped in demo runs** (decided 2026-11-06). Do not write or extend `tests/test_abdm.py` while building M1; the existing `pytest` suite still has to pass |
+| Browser testing by Claude | **Skipped in demo runs** (decided 2026-11-06). No Playwright or other browser automation to check the build. Claude verifies with `pytest` and a JS syntax check; the person walks the journeys in the browser, once against the sandbox |
 
 ### Out of scope
 
@@ -47,6 +48,7 @@ Aadhaar and stay read-only on every form filled from an ABHA. `PATCH /abha/api/v
 | Child ABHA create/update | Not requested |
 | NHA functional test run (`/abdm-test`, workbook, `abdm-ft/`) | **Not run in this demo** (CLAUDE.local.md). Case IDs are listed in §8 |
 | New automated tests for M1 | **Skipped in demo runs** (decision above). Saves time; the trade-off is that regressions surface only in the sandbox or browser walk |
+| Browser automation (Playwright) by Claude | **Skipped in demo runs** (decision above). The person does the browser walk |
 
 ## 2. Prerequisites
 
@@ -87,7 +89,7 @@ Aadhaar and stay read-only on every form filled from an ABHA. `PATCH /abha/api/v
 
 | Need | Where it lives now | M1 change |
 |---|---|---|
-| Runtime / run / test | Python, FastAPI + SQLModel. `uvicorn app.main:app`, `pytest` | Tests for the client and guards in `tests/test_abdm.py` (new) |
+| Runtime / run / test | Python, FastAPI + SQLModel. `uvicorn app.main:app`, `pytest` | No new M1 tests (decision in §1). Existing `pytest` must pass |
 | Front/back split | `web/` vanilla ES modules call `/api/*` through `web/js/api.js` | Every ABDM call goes through the backend. The browser never sees a gateway token or X-token |
 | Outbound HTTP client | None in `app/` (`httpx` only in requirements) | New, at `app/modules/abdm/client.py` |
 | Config / secrets | `app/core/config.py` reads `.env` (already has `ABDM_*`) | Reuse. No `BENEFIT_NAME` setting: none approved |
@@ -192,7 +194,7 @@ The only callback-driven (asynchronous) M1 journey is scan-and-share, which is d
 |---|---|---|---|---|---|
 | 1 | Sandbox credentials in `.env`. Gateway session call from the backend | `sessions` returns 2xx with `accessToken`. A following M1 call is not 401 | **done** (earlier checkout) | Session 200 (request-id `c0651361-…`). The certificate call then returned 200 with that token. Re-run once the person sets the `.env` values in this checkout | 2026-11-06 |
 | 2 | Certificate fetch + RSA encryption helper (padding read from `encryptionAlgorithm`, TTL cache) | An encrypted value is accepted: an OTP request returns `txnId`, not a validation refusal | in progress | Certificate 200: `RSA/ECB/OAEPWithSHA-1AndMGF1Padding`, 4096-bit. OAEP-SHA1 round trip proven in `tests/test_abdm.py`. ABDM accepting an encrypted value is still to be observed: it needs a real mobile or Aadhaar | 2026-11-06 |
-| 3 | `app/modules/abdm/` scaffold: client, router at `/api/abdm/m1`, POLICY entry, server-side flow/token store | `pytest tests/test_abdm.py` passes. `guard` admits reception at `/api/abdm` | **done** | `client.py`, `crypto.py`, `flows.py`, `router.py`. `pytest`: 29 passed (15 M1) | 2026-11-06 |
+| 3 | `app/modules/abdm/` scaffold: client, router at `/api/abdm/m1`, POLICY entry, server-side flow/token store | `pytest` passes. `guard` admits reception at `/api/abdm` | **done** | `client.py`, `crypto.py`, `flows.py`, `router.py`. `pytest`: 29 passed (15 M1) | 2026-11-06 |
 | 4 | Patient columns + `AbhaConsent` table. `form.js` `readOnly` | Columns present after restart. Registration without ABHA still passes | **done** | `init_db` added the columns on start. `test_registration_without_abha_still_works` and `test_flow.py` pass | 2026-11-06 |
 | 5 | ABHA step in `patients.js` `onNew` → `web/js/ui/abha.js`, "Not now" exit, shared OTP/resend component | "Not now" opens the form and saves a patient with MRN only | **done** | Browser check: Not now → "New patient" form, ABHA fields read-only. Consent gating, Aadhaar and mobile validation errors on the active step. No console errors | 2026-11-06 |
 | 6 | J1 Create ABHA by Aadhaar OTP | One sandbox creation ends on a filled form with a 14-digit ABHA number + address, saved and linked | **blocked** (built) | Mocked flow passes, incl. `isNew:false`, consent block, resend reuses txnId. Needs a person with an Aadhaar-linked phone for OTPs | |

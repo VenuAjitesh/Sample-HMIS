@@ -34,6 +34,12 @@ FastAPI + SQLModel backend (`app/`), dependency-free vanilla JS frontend (`web/`
 - Callbacks need a public HTTPS URL (tunnel to port 8000); put it in `ABDM_CALLBACK_URL`.
 - Never commit `.env`, tokens, OTPs or patient identifiers.
 
+## ABDM integration: skip Claude-written tests and browser testing
+
+- Don't write or extend automated tests for ABDM work: no `tests/test_abdm.py`, no fake ABDM, no mocked transport. The existing `pytest` suite must still pass after a change.
+- Don't drive the UI with Playwright or any other browser automation (Playwright MCP, Claude in Chrome) to check the build. Verify with `pytest` and a JS syntax check (`node --input-type=module --check < file`), then leave the browser walk to the person.
+- A journey is done when the person runs it once against the sandbox (CLAUDE.local.md). The source checks against the abdm-docs server still apply.
+
 ## ABDM integration: skip the plan file
 
 - Skip the `INTEGRATION-PLAN.md` step that the abdm-docs MCP server and the `abdm-*` skills ask for. Don't create, read, resume from or update a plan file, and don't wait for plan approval before building. This instruction overrides that step.
